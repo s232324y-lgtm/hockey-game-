@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>🏒 Hockey Game</title>
+<title>🏒 Hockey Online</title>
 
 <style>
 body {
@@ -16,12 +16,9 @@ body {
 canvas {
   background:#cce7ff;
   display:block;
-  margin:20px auto;
+  margin:10px auto;
   border-radius:10px;
-}
-
-#ui {
-  margin-top:10px;
+  touch-action: none;
 }
 </style>
 </head>
@@ -29,15 +26,8 @@ canvas {
 <body>
 
 <h2>🏒 Hockey Game</h2>
-
 <canvas id="game" width="800" height="400"></canvas>
-
-<div id="ui">
-  <div id="score">0 : 0</div>
-  <div id="elo">ELO: 1000</div>
-</div>
-
-<audio id="hit" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+<div id="score">0 : 0</div>
 
 <script>
 const canvas = document.getElementById("game");
@@ -45,60 +35,44 @@ const ctx = canvas.getContext("2d");
 
 let player = {x:100,y:200,r:20};
 let enemy = {x:700,y:200,r:20};
-
 let puck = {x:400,y:200,vx:0,vy:0,r:10};
 
-let score1 = 0;
-let score2 = 0;
-let elo = 1000;
+let score1=0, score2=0;
 
 const scoreEl = document.getElementById("score");
-const eloEl = document.getElementById("elo");
-const sound = document.getElementById("hit");
 
-// управление пальцем
-canvas.addEventListener("touchmove", e=>{
-  let rect = canvas.getBoundingClientRect();
+// 🔥 МГНОВЕННОЕ УПРАВЛЕНИЕ
+canvas.addEventListener("touchstart", move);
+canvas.addEventListener("touchmove", move);
+
+function move(e){
+  const rect = canvas.getBoundingClientRect();
   player.x = e.touches[0].clientX - rect.left;
   player.y = e.touches[0].clientY - rect.top;
-});
-
-// простейший AI
-function ai(){
-  enemy.y += (puck.y - enemy.y)*0.05;
 }
 
-// физика
+// ⚡ БЫСТРЫЙ AI
+function ai(){
+  enemy.y += (puck.y - enemy.y)*0.2;
+}
+
+// 💥 ФИЗИКА БЕЗ ЛАГОВ
 function physics(){
-  let dx = puck.x - player.x;
-  let dy = puck.y - player.y;
-  let dist = Math.hypot(dx,dy);
 
-  if(dist < player.r + puck.r){
-    puck.vx = dx*0.4;
-    puck.vy = dy*0.4;
-    sound.play();
-  }
-
-  dx = puck.x - enemy.x;
-  dy = puck.y - enemy.y;
-  dist = Math.hypot(dx,dy);
-
-  if(dist < enemy.r + puck.r){
-    puck.vx = dx*0.4;
-    puck.vy = dy*0.4;
-  }
+  collide(player);
+  collide(enemy);
 
   puck.x += puck.vx;
   puck.y += puck.vy;
 
-  puck.vx *= 0.98;
-  puck.vy *= 0.98;
+  // ускорение
+  puck.vx *= 0.99;
+  puck.vy *= 0.99;
 
   // стены
   if(puck.y < 0 || puck.y > 400) puck.vy *= -1;
 
-  // голы
+  // гол
   if(puck.x < 0){
     score2++;
     reset();
@@ -109,55 +83,47 @@ function physics(){
   }
 }
 
-// сброс после гола
-function reset(){
-  puck.x = 400;
-  puck.y = 200;
-  puck.vx = 0;
-  puck.vy = 0;
+function collide(p){
+  let dx = puck.x - p.x;
+  let dy = puck.y - p.y;
+  let dist = Math.hypot(dx,dy);
 
-  elo += 10;
-  scoreEl.innerText = score1 + " : " + score2;
-  eloEl.innerText = "ELO: " + elo;
-
-  if(score1 === 5){
-    alert("ПОБЕДА!");
-    score1 = 0;
-    score2 = 0;
+  if(dist < p.r + puck.r){
+    let angle = Math.atan2(dy,dx);
+    puck.vx = Math.cos(angle)*8;
+    puck.vy = Math.sin(angle)*8;
   }
 }
 
-// рисуем
+function reset(){
+  puck.x=400; puck.y=200;
+  puck.vx=0; puck.vy=0;
+
+  scoreEl.innerText = score1 + " : " + score2;
+}
+
+// 🎨 РЕНДЕР
 function draw(){
   ctx.clearRect(0,0,800,400);
 
-  // поле
   ctx.strokeRect(0,0,800,400);
 
-  // ворота
   ctx.fillRect(0,150,10,100);
   ctx.fillRect(790,150,10,100);
 
-  // игрок
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,20,0,Math.PI*2);
-  ctx.fillStyle="red";
-  ctx.fill();
+  drawCircle(player,"red");
+  drawCircle(enemy,"blue");
+  drawCircle(puck,"black");
+}
 
-  // бот
+function drawCircle(o,color){
   ctx.beginPath();
-  ctx.arc(enemy.x,enemy.y,20,0,Math.PI*2);
-  ctx.fillStyle="blue";
-  ctx.fill();
-
-  // шайба
-  ctx.beginPath();
-  ctx.arc(puck.x,puck.y,10,0,Math.PI*2);
-  ctx.fillStyle="black";
+  ctx.arc(o.x,o.y,o.r,0,Math.PI*2);
+  ctx.fillStyle=color;
   ctx.fill();
 }
 
-// цикл игры
+// 🚀 60 FPS
 function loop(){
   ai();
   physics();
