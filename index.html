@@ -1,130 +1,171 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Hockey Game</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+<meta charset="UTF-8">
+<title>🏒 Hockey Game</title>
 
-    .card {
-      background: rgba(255,255,255,0.1);
-      padding: 30px;
-      border-radius: 20px;
-      text-align: center;
-      width: 300px;
-    }
+<style>
+body {
+  margin:0;
+  background:#0f2027;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
 
-    h1 {
-      margin-bottom: 20px;
-    }
+canvas {
+  background:#cce7ff;
+  display:block;
+  margin:20px auto;
+  border-radius:10px;
+}
 
-    #score {
-      font-size: 40px;
-      margin: 20px 0;
-    }
-
-    button {
-      background: orange;
-      border: none;
-      padding: 10px 15px;
-      margin: 5px;
-      border-radius: 10px;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      opacity: 0.8;
-    }
-  </style>
+#ui {
+  margin-top:10px;
+}
+</style>
 </head>
 
 <body>
 
-<div class="card">
-  <h1>🏒 Hockey Game</h1>
+<h2>🏒 Hockey Game</h2>
 
+<canvas id="game" width="800" height="400"></canvas>
+
+<div id="ui">
   <div id="score">0 : 0</div>
-
-  <button onclick="addGoal1()">+ Гол команда 1</button>
-  <button onclick="addGoal2()">+ Гол команда 2</button>
-  <br><br>
-  <button onclick="resetScore()">Сброс</button>
+  <div id="elo">ELO: 1000</div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+<audio id="hit" src="https://www.soundjay.com/button/beep-07.wav"></audio>
 
-// 🔑 ВСТАВЬ СВОЙ КОНФИГ (у тебя он уже есть)
-const firebaseConfig = {
-  apiKey: "ТВОЙ_API_KEY",
-  authDomain: "hockey-game-12834.firebaseapp.com",
-  databaseURL: "https://hockey-game-12834-default-rtdb.firebaseio.com/",
-  projectId: "hockey-game-12834",
-  storageBucket: "hockey-game-12834.appspot.com",
-  messagingSenderId: "297111172491",
-  appId: "1:297111172491:web:7314083e28aae40b942b8e"
-};
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-// 🚀 Запуск
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+let player = {x:100,y:200,r:20};
+let enemy = {x:700,y:200,r:20};
 
-// 📊 Счёт
+let puck = {x:400,y:200,vx:0,vy:0,r:10};
+
 let score1 = 0;
 let score2 = 0;
+let elo = 1000;
 
-// 📡 Слушаем базу
-const scoreRef = ref(db, "score/");
-onValue(scoreRef, (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    score1 = data.team1 || 0;
-    score2 = data.team2 || 0;
-    updateUI();
-  }
+const scoreEl = document.getElementById("score");
+const eloEl = document.getElementById("elo");
+const sound = document.getElementById("hit");
+
+// управление пальцем
+canvas.addEventListener("touchmove", e=>{
+  let rect = canvas.getBoundingClientRect();
+  player.x = e.touches[0].clientX - rect.left;
+  player.y = e.touches[0].clientY - rect.top;
 });
 
-// 💾 Сохранение
-function saveScore() {
-  set(scoreRef, {
-    team1: score1,
-    team2: score2
-  });
+// простейший AI
+function ai(){
+  enemy.y += (puck.y - enemy.y)*0.05;
 }
 
-// 🎮 Действия
-window.addGoal1 = function() {
-  score1++;
-  saveScore();
-};
+// физика
+function physics(){
+  let dx = puck.x - player.x;
+  let dy = puck.y - player.y;
+  let dist = Math.hypot(dx,dy);
 
-window.addGoal2 = function() {
-  score2++;
-  saveScore();
-};
+  if(dist < player.r + puck.r){
+    puck.vx = dx*0.4;
+    puck.vy = dy*0.4;
+    sound.play();
+  }
 
-window.resetScore = function() {
-  score1 = 0;
-  score2 = 0;
-  saveScore();
-};
+  dx = puck.x - enemy.x;
+  dy = puck.y - enemy.y;
+  dist = Math.hypot(dx,dy);
 
-// 🎨 Обновление
-function updateUI() {
-  document.getElementById("score").innerText = score1 + " : " + score2;
+  if(dist < enemy.r + puck.r){
+    puck.vx = dx*0.4;
+    puck.vy = dy*0.4;
+  }
+
+  puck.x += puck.vx;
+  puck.y += puck.vy;
+
+  puck.vx *= 0.98;
+  puck.vy *= 0.98;
+
+  // стены
+  if(puck.y < 0 || puck.y > 400) puck.vy *= -1;
+
+  // голы
+  if(puck.x < 0){
+    score2++;
+    reset();
+  }
+  if(puck.x > 800){
+    score1++;
+    reset();
+  }
 }
+
+// сброс после гола
+function reset(){
+  puck.x = 400;
+  puck.y = 200;
+  puck.vx = 0;
+  puck.vy = 0;
+
+  elo += 10;
+  scoreEl.innerText = score1 + " : " + score2;
+  eloEl.innerText = "ELO: " + elo;
+
+  if(score1 === 5){
+    alert("ПОБЕДА!");
+    score1 = 0;
+    score2 = 0;
+  }
+}
+
+// рисуем
+function draw(){
+  ctx.clearRect(0,0,800,400);
+
+  // поле
+  ctx.strokeRect(0,0,800,400);
+
+  // ворота
+  ctx.fillRect(0,150,10,100);
+  ctx.fillRect(790,150,10,100);
+
+  // игрок
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,20,0,Math.PI*2);
+  ctx.fillStyle="red";
+  ctx.fill();
+
+  // бот
+  ctx.beginPath();
+  ctx.arc(enemy.x,enemy.y,20,0,Math.PI*2);
+  ctx.fillStyle="blue";
+  ctx.fill();
+
+  // шайба
+  ctx.beginPath();
+  ctx.arc(puck.x,puck.y,10,0,Math.PI*2);
+  ctx.fillStyle="black";
+  ctx.fill();
+}
+
+// цикл игры
+function loop(){
+  ai();
+  physics();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
 </script>
 
 </body>
