@@ -1,119 +1,174 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>🏒 Hockey Online</title>
+<title>🏒 Ultra Hockey</title>
 
 <style>
-body {
+body{
   margin:0;
-  background:#0f2027;
+  background: radial-gradient(circle,#0f2027,#203a43,#2c5364);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
   color:white;
-  text-align:center;
   font-family:Arial;
 }
 
-canvas {
-  background:#cce7ff;
-  display:block;
-  margin:10px auto;
-  border-radius:10px;
-  touch-action: none;
+canvas{
+  background:#0b1c24;
+  border-radius:20px;
+  box-shadow:0 0 30px black;
+}
+#menu{
+  position:absolute;
+  top:20px;
+}
+button{
+  padding:10px;
+  margin:5px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🏒 Hockey Game</h2>
-<canvas id="game" width="800" height="400"></canvas>
-<div id="score">0 : 0</div>
+<div id="menu">
+  <button onclick="mode='bot'">🤖 С ботом</button>
+  <button onclick="mode='pvp'">👥 2 игрока</button>
+</div>
+
+<canvas id="game" width="900" height="500"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let player = {x:100,y:200,r:20};
-let enemy = {x:700,y:200,r:20};
-let puck = {x:400,y:200,vx:0,vy:0,r:10};
+let mode = "bot";
+
+// 🔊 звук
+function hitSound(){
+  let ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
+  let osc = ctxAudio.createOscillator();
+  osc.connect(ctxAudio.destination);
+  osc.start();
+  osc.stop(ctxAudio.currentTime+0.05);
+}
+
+// 🐱 персонажи
+let p1 = {x:150,y:250,r:25,color:"orange"}; // карамелька
+let p2 = {x:750,y:250,r:25,color:"blue"};   // коржик
+
+// шайба
+let puck = {x:450,y:250,vx:0,vy:0,r:12};
 
 let score1=0, score2=0;
 
-const scoreEl = document.getElementById("score");
+// управление
+let keys={};
+document.addEventListener("keydown",e=>keys[e.key]=true);
+document.addEventListener("keyup",e=>keys[e.key]=false);
 
-// 🔥 МГНОВЕННОЕ УПРАВЛЕНИЕ
-canvas.addEventListener("touchstart", move);
-canvas.addEventListener("touchmove", move);
+// движение игроков
+function move(){
+  // игрок 1 (WASD)
+  if(keys["w"]) p1.y-=5;
+  if(keys["s"]) p1.y+=5;
+  if(keys["a"]) p1.x-=5;
+  if(keys["d"]) p1.x+=5;
 
-function move(e){
-  const rect = canvas.getBoundingClientRect();
-  player.x = e.touches[0].clientX - rect.left;
-  player.y = e.touches[0].clientY - rect.top;
+  // игрок 2 (стрелки)
+  if(mode==="pvp"){
+    if(keys["ArrowUp"]) p2.y-=5;
+    if(keys["ArrowDown"]) p2.y+=5;
+    if(keys["ArrowLeft"]) p2.x-=5;
+    if(keys["ArrowRight"]) p2.x+=5;
+  }
+
+  // бот
+  if(mode==="bot"){
+    p2.y += (puck.y - p2.y)*0.1;
+  }
+
+  // границы (ничего не вылетает)
+  clamp(p1);
+  clamp(p2);
 }
 
-// ⚡ БЫСТРЫЙ AI
-function ai(){
-  enemy.y += (puck.y - enemy.y)*0.2;
+function clamp(p){
+  p.x=Math.max(p.r,Math.min(900-p.r,p.x));
+  p.y=Math.max(p.r,Math.min(500-p.r,p.y));
 }
 
-// 💥 ФИЗИКА БЕЗ ЛАГОВ
+// физика
 function physics(){
+  collide(p1);
+  collide(p2);
 
-  collide(player);
-  collide(enemy);
+  puck.x+=puck.vx;
+  puck.y+=puck.vy;
 
-  puck.x += puck.vx;
-  puck.y += puck.vy;
-
-  // ускорение
-  puck.vx *= 0.99;
-  puck.vy *= 0.99;
+  puck.vx*=0.99;
+  puck.vy*=0.99;
 
   // стены
-  if(puck.y < 0 || puck.y > 400) puck.vy *= -1;
+  if(puck.y<0||puck.y>500) puck.vy*=-1;
 
   // гол
-  if(puck.x < 0){
+  if(puck.x<0){
     score2++;
     reset();
   }
-  if(puck.x > 800){
+  if(puck.x>900){
     score1++;
     reset();
   }
 }
 
 function collide(p){
-  let dx = puck.x - p.x;
-  let dy = puck.y - p.y;
-  let dist = Math.hypot(dx,dy);
+  let dx=puck.x-p.x;
+  let dy=puck.y-p.y;
+  let dist=Math.hypot(dx,dy);
 
-  if(dist < p.r + puck.r){
-    let angle = Math.atan2(dy,dx);
-    puck.vx = Math.cos(angle)*8;
-    puck.vy = Math.sin(angle)*8;
+  if(dist<p.r+puck.r){
+    let angle=Math.atan2(dy,dx);
+    puck.vx=Math.cos(angle)*10;
+    puck.vy=Math.sin(angle)*10;
+    hitSound();
   }
 }
 
 function reset(){
-  puck.x=400; puck.y=200;
-  puck.vx=0; puck.vy=0;
-
-  scoreEl.innerText = score1 + " : " + score2;
+  puck.x=450;
+  puck.y=250;
+  puck.vx=0;
+  puck.vy=0;
 }
 
-// 🎨 РЕНДЕР
+// рисование
 function draw(){
-  ctx.clearRect(0,0,800,400);
+  ctx.clearRect(0,0,900,500);
 
-  ctx.strokeRect(0,0,800,400);
+  // поле
+  ctx.strokeStyle="white";
+  ctx.strokeRect(0,0,900,500);
 
-  ctx.fillRect(0,150,10,100);
-  ctx.fillRect(790,150,10,100);
+  // ворота
+  ctx.fillRect(0,180,10,140);
+  ctx.fillRect(890,180,10,140);
 
-  drawCircle(player,"red");
-  drawCircle(enemy,"blue");
-  drawCircle(puck,"black");
+  // игроки
+  drawCircle(p1,p1.color);
+  drawCircle(p2,p2.color);
+
+  // шайба
+  drawCircle(puck,"white");
+
+  // счёт
+  ctx.font="30px Arial";
+  ctx.fillText(score1+" : "+score2,420,40);
 }
 
 function drawCircle(o,color){
@@ -123,9 +178,9 @@ function drawCircle(o,color){
   ctx.fill();
 }
 
-// 🚀 60 FPS
+// цикл
 function loop(){
-  ai();
+  move();
   physics();
   draw();
   requestAnimationFrame(loop);
