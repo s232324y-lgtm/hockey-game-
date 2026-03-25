@@ -6,111 +6,228 @@
 
 <style>
 body {
-  margin: 0;
+  margin:0;
   font-family: Arial;
-  background: linear-gradient(135deg, #3b5998, #5f7ecb);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  background: linear-gradient(135deg,#3a4f7a,#2b3f66);
+  color:white;
 }
 
-.box {
+.card {
+  width:320px;
+  margin:100px auto;
   background: rgba(255,255,255,0.1);
-  padding: 30px;
-  border-radius: 15px;
-  backdrop-filter: blur(10px);
-  width: 300px;
-  text-align: center;
-  color: white;
+  padding:20px;
+  border-radius:15px;
+  text-align:center;
 }
 
 input {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 8px;
-  border: none;
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border:none;
+  border-radius:8px;
 }
 
 button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  color:white;
+  cursor:pointer;
 }
 
-.reg { background: #4CAF50; color: white; }
-.login { background: #4a7dff; color: white; }
+.green { background:#5cb85c; }
+.blue { background:#4c79d3; }
+.red { background:#d9534f; }
 
-#status {
-  margin-top: 15px;
-  font-size: 12px;
-}
+.hidden { display:none; }
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<!-- LOGIN -->
+<div class="card" id="authBox">
   <h2>Аккаунт</h2>
-
   <input id="email" placeholder="Email">
   <input id="pass" type="password" placeholder="Пароль">
 
-  <button class="reg" onclick="register()">Регистрация</button>
-  <button class="login" onclick="login()">Войти</button>
+  <button class="green" onclick="register()">Регистрация</button>
+  <button class="blue" onclick="login()">Войти</button>
 
-  <div id="status"></div>
+  <p id="status"></p>
 </div>
 
-<!-- Firebase (НОВАЯ ВЕРСИЯ) -->
+<!-- ЛИЧНЫЙ КАБИНЕТ -->
+<div class="card hidden" id="cabinet">
+  <h2>Личный кабинет</h2>
+
+  <p>Баланс: <b id="balance">0</b> ₽</p>
+
+  <button class="green" onclick="showPay()">Пополнить</button>
+  <button class="blue" onclick="showShop()">Товары</button>
+  <button class="red" onclick="logout()">Выйти</button>
+
+  <div id="payBox" class="hidden">
+    <h3>Пополнение</h3>
+    <input id="card" placeholder="Номер карты">
+    <input id="date" placeholder="MM/YY">
+    <input id="cvv" placeholder="CVV">
+    <input id="amount" placeholder="Сумма">
+
+    <button class="green" onclick="pay()">Оплатить</button>
+  </div>
+
+  <div id="shopBox" class="hidden">
+    <h3>Магазин</h3>
+
+    <button onclick="buy(50)">Купить товар - 50₽</button>
+    <button onclick="buy(100)">Купить товар - 100₽</button>
+    <button onclick="buy(200)">Купить товар - 200₽</button>
+
+  </div>
+
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBwGSDeMOOyDtLiOPGNED7GiWRK9J8UWkg",
   authDomain: "ded-shop-921c6.firebaseapp.com",
-  projectId: "ded-shop-921c6",
-  storageBucket: "ded-shop-921c6.appspot.com",
-  messagingSenderId: "168352739870",
-  appId: "1:168352739870:web:408cbe3cd7afa1df34740f"
+  projectId: "ded-shop-921c6"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
-function setStatus(msg) {
-  document.getElementById("status").innerText = msg;
-}
+// UI
+const authBox = document.getElementById("authBox");
+const cabinet = document.getElementById("cabinet");
+const statusText = document.getElementById("status");
+const balanceText = document.getElementById("balance");
 
+// REGISTER
 window.register = async () => {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
+  const email = email.value;
+  const pass = pass.value;
 
   try {
-    await createUserWithEmailAndPassword(auth, email, pass);
-    setStatus("Регистрация успешна ✅");
+    const user = await createUserWithEmailAndPassword(auth, email, pass);
+
+    await setDoc(doc(db, "users", user.user.uid), {
+      balance: 0
+    });
+
+    statusText.innerText = "Регистрация успешна ✅";
   } catch (e) {
-    setStatus(e.message);
+    statusText.innerText = e.message;
   }
 };
 
+// LOGIN
 window.login = async () => {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
-
   try {
-    await signInWithEmailAndPassword(auth, email, pass);
-    setStatus("Вход выполнен ✅");
+    await signInWithEmailAndPassword(auth, email.value, pass.value);
   } catch (e) {
-    setStatus(e.message);
+    statusText.innerText = e.message;
   }
 };
+
+// CHECK LOGIN
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    authBox.classList.add("hidden");
+    cabinet.classList.remove("hidden");
+
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      balanceText.innerText = snap.data().balance;
+    }
+  } else {
+    authBox.classList.remove("hidden");
+    cabinet.classList.add("hidden");
+  }
+});
+
+// LOGOUT
+window.logout = async () => {
+  await signOut(auth);
+};
+
+// ПОКАЗ БЛОКОВ
+window.showPay = () => {
+  payBox.classList.toggle("hidden");
+};
+
+window.showShop = () => {
+  shopBox.classList.toggle("hidden");
+};
+
+// ПОПОЛНЕНИЕ (ФЕЙК)
+window.pay = async () => {
+  const amount = parseInt(document.getElementById("amount").value);
+
+  if (!amount || amount <= 0) return alert("Ошибка суммы");
+
+  const user = auth.currentUser;
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+
+  let newBalance = snap.data().balance + amount;
+
+  await updateDoc(ref, {
+    balance: newBalance
+  });
+
+  balanceText.innerText = newBalance;
+  alert("Оплата прошла ✅");
+};
+
+// ПОКУПКА
+window.buy = async (price) => {
+  const user = auth.currentUser;
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+
+  let bal = snap.data().balance;
+
+  if (bal < price) {
+    alert("Недостаточно средств ❌");
+    return;
+  }
+
+  bal -= price;
+
+  await updateDoc(ref, {
+    balance: bal
+  });
+
+  balanceText.innerText = bal;
+  alert("Покупка успешна ✅");
+};
+
 </script>
 
 </body>
