@@ -7,48 +7,47 @@
 <style>
 body {
   margin: 0;
-  height: 100vh;
+  font-family: Arial;
+  background: #3b5998;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #3f5fa8;
-  font-family: Arial;
+  height: 100vh;
 }
 
 .box {
   background: rgba(255,255,255,0.1);
   padding: 30px;
-  border-radius: 15px;
+  border-radius: 12px;
   width: 300px;
   text-align: center;
-  backdrop-filter: blur(10px);
+  color: white;
 }
 
 input {
   width: 100%;
   padding: 10px;
-  margin: 10px 0;
-  border-radius: 8px;
+  margin: 8px 0;
+  border-radius: 6px;
   border: none;
 }
 
 button {
   width: 100%;
   padding: 10px;
-  margin: 5px 0;
+  margin-top: 10px;
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  border-radius: 6px;
   color: white;
-  font-size: 16px;
+  cursor: pointer;
 }
 
 .reg { background: #4CAF50; }
-.log { background: #3b6ef5; }
+.login { background: #4a6edb; }
 
 #status {
-  margin-top: 10px;
-  color: white;
+  margin-top: 15px;
+  font-size: 14px;
 }
 </style>
 </head>
@@ -57,64 +56,68 @@ button {
 
 <div class="box">
   <h2>Аккаунт</h2>
-  <input id="email" placeholder="Email">
+  <input id="email" type="email" placeholder="Email">
   <input id="pass" type="password" placeholder="Пароль">
 
   <button class="reg" onclick="register()">Регистрация</button>
-  <button class="log" onclick="login()">Войти</button>
+  <button class="login" onclick="login()">Войти</button>
 
   <div id="status"></div>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-<script>
+// 🔥 ТВОЯ КОНФИГУРАЦИЯ (я вставил с фото)
 const firebaseConfig = {
-  apiKey: "AIzaSyBwGSDeMOoyDtLiOPGNED7GiWRK9J8UWkg",
+  apiKey: "AIzaSyBwGSDeMO0yDtLiOPGNED7GiWRK9J8UWkg",
   authDomain: "ded-shop-921c6.firebaseapp.com",
   projectId: "ded-shop-921c6",
-  storageBucket: "ded-shop-921c6.firebasestorage.app",
+  storageBucket: "ded-shop-921c6.appspot.com",
   messagingSenderId: "168352739870",
   appId: "1:168352739870:web:408cbe3cd7afa1df34740f",
   measurementId: "G-FKRK4R6JJN"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
+// запуск
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
+// статус
 function status(text) {
   document.getElementById("status").innerText = text;
 }
 
 // регистрация
-function register() {
-  const email = emailInput();
-  const pass = passInput();
+window.register = async () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
 
-  auth.createUserWithEmailAndPassword(email, pass)
-    .then(() => status("Регистрация успешна ✅"))
-    .catch(e => status(e.message));
-}
+  try {
+    await createUserWithEmailAndPassword(auth, email, pass);
+    status("✅ Регистрация успешна");
+  } catch (e) {
+    status("❌ " + e.message);
+  }
+};
 
 // вход
-function login() {
-  const email = emailInput();
-  const pass = passInput();
+window.login = async () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
 
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(() => status("Вход выполнен ✅"))
-    .catch(e => status(e.message));
-}
-
-function emailInput() {
-  return document.getElementById("email").value;
-}
-
-function passInput() {
-  return document.getElementById("pass").value;
-}
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    status("✅ Вход выполнен");
+  } catch (e) {
+    status("❌ " + e.message);
+  }
+};
 </script>
 
 </body>
