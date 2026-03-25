@@ -2,190 +2,268 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>🏒 Ultra Hockey</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultra App</title>
 
 <style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
 body{
-  margin:0;
-  background: radial-gradient(circle,#0f2027,#203a43,#2c5364);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  color:white;
-  font-family:Arial;
+  font-family:system-ui;
+  background:#0f2027;
+  color:#fff;
 }
 
-canvas{
-  background:#0b1c24;
-  border-radius:20px;
-  box-shadow:0 0 30px black;
+/* layout */
+.app{display:flex;flex-direction:column;height:100vh;}
+
+.header{
+  padding:15px;
+  background:#111;
+  display:flex;
+  justify-content:space-between;
 }
-#menu{
-  position:absolute;
-  top:20px;
+
+.nav button{margin-left:5px;}
+
+.main{flex:1;overflow:auto;padding:15px;}
+
+.page{display:none;}
+.page.active{display:block;}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:10px;
 }
+
+.card{
+  background:#1b2a34;
+  padding:15px;
+  border-radius:12px;
+  text-align:center;
+}
+
 button{
   padding:10px;
-  margin:5px;
+  border:none;
+  border-radius:8px;
+  background:#ff9800;
+  color:#fff;
+}
+
+input{
+  padding:10px;
+  margin:5px 0;
+  width:100%;
+  border:none;
+  border-radius:8px;
+}
+
+/* modal */
+.modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  background:rgba(0,0,0,0.7);
+  align-items:center;
+  justify-content:center;
+}
+
+.modal.show{display:flex;}
+
+.box{
+  background:#222;
+  padding:20px;
+  border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="menu">
-  <button onclick="mode='bot'">🤖 С ботом</button>
-  <button onclick="mode='pvp'">👥 2 игрока</button>
+<div class="app">
+
+  <div class="header">
+    <div>🔥 ULTRA APP</div>
+    <div class="nav">
+      <button onclick="go('home')">Главная</button>
+      <button onclick="go('profile')">Профиль</button>
+      <button onclick="go('donate')">Донат</button>
+      <button onclick="logout()">Выйти</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- LOGIN -->
+    <div id="auth" class="page active">
+      <h2>Регистрация / Вход</h2>
+
+      <div class="card">
+        <input id="login" placeholder="Логин">
+        <input id="pass" placeholder="Пароль" type="password">
+
+        <button onclick="register()">Регистрация</button>
+        <button onclick="login()">Вход</button>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div id="home" class="page">
+      <h2>Главная</h2>
+      <div class="grid" id="news"></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div id="profile" class="page">
+      <h2>Профиль</h2>
+      <div class="card" id="profileData"></div>
+    </div>
+
+    <!-- DONATE -->
+    <div id="donate" class="page">
+      <h2>Донат</h2>
+      <div class="grid" id="donateList"></div>
+    </div>
+
+  </div>
+
 </div>
 
-<canvas id="game" width="900" height="500"></canvas>
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3 id="text"></h3>
+    <button onclick="closeModal()">Ок</button>
+  </div>
+</div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
 
-let mode = "bot";
+// ===== ДАННЫЕ =====
+const app = {
+  news:["🔥 Обновление","⚡ Новое","🎮 Режим","💻 Онлайн"],
+  prices:[100,200,250,500,550]
+};
 
-// 🔊 звук
-function hitSound(){
-  let ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
-  let osc = ctxAudio.createOscillator();
-  osc.connect(ctxAudio.destination);
-  osc.start();
-  osc.stop(ctxAudio.currentTime+0.05);
+// ===== НАВИГАЦИЯ =====
+function go(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 }
 
-// 🐱 персонажи
-let p1 = {x:150,y:250,r:25,color:"orange"}; // карамелька
-let p2 = {x:750,y:250,r:25,color:"blue"};   // коржик
-
-// шайба
-let puck = {x:450,y:250,vx:0,vy:0,r:12};
-
-let score1=0, score2=0;
-
-// управление
-let keys={};
-document.addEventListener("keydown",e=>keys[e.key]=true);
-document.addEventListener("keyup",e=>keys[e.key]=false);
-
-// движение игроков
-function move(){
-  // игрок 1 (WASD)
-  if(keys["w"]) p1.y-=5;
-  if(keys["s"]) p1.y+=5;
-  if(keys["a"]) p1.x-=5;
-  if(keys["d"]) p1.x+=5;
-
-  // игрок 2 (стрелки)
-  if(mode==="pvp"){
-    if(keys["ArrowUp"]) p2.y-=5;
-    if(keys["ArrowDown"]) p2.y+=5;
-    if(keys["ArrowLeft"]) p2.x-=5;
-    if(keys["ArrowRight"]) p2.x+=5;
-  }
-
-  // бот
-  if(mode==="bot"){
-    p2.y += (puck.y - p2.y)*0.1;
-  }
-
-  // границы (ничего не вылетает)
-  clamp(p1);
-  clamp(p2);
+// ===== СОХРАНЕНИЕ =====
+function saveUser(user){
+  localStorage.setItem("user", JSON.stringify(user));
 }
 
-function clamp(p){
-  p.x=Math.max(p.r,Math.min(900-p.r,p.x));
-  p.y=Math.max(p.r,Math.min(500-p.r,p.y));
+function getUser(){
+  return JSON.parse(localStorage.getItem("user"));
 }
 
-// физика
-function physics(){
-  collide(p1);
-  collide(p2);
+// ===== РЕГИСТРАЦИЯ =====
+function register(){
+  const login = document.getElementById("login").value;
+  const pass = document.getElementById("pass").value;
 
-  puck.x+=puck.vx;
-  puck.y+=puck.vy;
+  if(!login || !pass) return show("Заполни всё");
 
-  puck.vx*=0.99;
-  puck.vy*=0.99;
+  const user = {
+    login,
+    pass,
+    level:1,
+    coins:0
+  };
 
-  // стены
-  if(puck.y<0||puck.y>500) puck.vy*=-1;
+  saveUser(user);
+  show("Аккаунт создан");
+}
 
-  // гол
-  if(puck.x<0){
-    score2++;
-    reset();
-  }
-  if(puck.x>900){
-    score1++;
-    reset();
+// ===== ВХОД =====
+function login(){
+  const login = document.getElementById("login").value;
+  const pass = document.getElementById("pass").value;
+
+  const user = getUser();
+
+  if(!user) return show("Нет аккаунта");
+
+  if(user.login === login && user.pass === pass){
+    show("Вход успешен");
+    loadApp();
+  } else {
+    show("Ошибка");
   }
 }
 
-function collide(p){
-  let dx=puck.x-p.x;
-  let dy=puck.y-p.y;
-  let dist=Math.hypot(dx,dy);
-
-  if(dist<p.r+puck.r){
-    let angle=Math.atan2(dy,dx);
-    puck.vx=Math.cos(angle)*10;
-    puck.vy=Math.sin(angle)*10;
-    hitSound();
-  }
+// ===== ВЫХОД =====
+function logout(){
+  localStorage.removeItem("user");
+  go("auth");
 }
 
-function reset(){
-  puck.x=450;
-  puck.y=250;
-  puck.vx=0;
-  puck.vy=0;
+// ===== ЗАГРУЗКА =====
+function loadApp(){
+  go("home");
+  render();
 }
 
-// рисование
-function draw(){
-  ctx.clearRect(0,0,900,500);
+// ===== РЕНДЕР =====
+function render(){
 
-  // поле
-  ctx.strokeStyle="white";
-  ctx.strokeRect(0,0,900,500);
+  // новости
+  const news = document.getElementById("news");
+  news.innerHTML="";
+  app.news.forEach(n=>{
+    news.innerHTML += `<div class="card">${n}</div>`;
+  });
 
-  // ворота
-  ctx.fillRect(0,180,10,140);
-  ctx.fillRect(890,180,10,140);
+  // профиль
+  const user = getUser();
+  document.getElementById("profileData").innerHTML = `
+    <p>Имя: ${user.login}</p>
+    <p>Уровень: ${user.level}</p>
+    <p>Монеты: ${user.coins}</p>
+  `;
 
-  // игроки
-  drawCircle(p1,p1.color);
-  drawCircle(p2,p2.color);
-
-  // шайба
-  drawCircle(puck,"white");
-
-  // счёт
-  ctx.font="30px Arial";
-  ctx.fillText(score1+" : "+score2,420,40);
+  // донат
+  const donate = document.getElementById("donateList");
+  donate.innerHTML="";
+  app.prices.forEach(p=>{
+    donate.innerHTML += `
+      <div class="card">
+        <div>${p}₽</div>
+        <button onclick="pay(${p})">Купить</button>
+      </div>
+    `;
+  });
 }
 
-function drawCircle(o,color){
-  ctx.beginPath();
-  ctx.arc(o.x,o.y,o.r,0,Math.PI*2);
-  ctx.fillStyle=color;
-  ctx.fill();
+// ===== ДОНАТ (фейк) =====
+function pay(amount){
+  let user = getUser();
+  user.coins += amount;
+  saveUser(user);
+  render();
+  show("Начислено: "+amount);
 }
 
-// цикл
-function loop(){
-  move();
-  physics();
-  draw();
-  requestAnimationFrame(loop);
+// ===== МОДАЛКА =====
+function show(t){
+  document.getElementById("text").innerText=t;
+  document.getElementById("modal").classList.add("show");
 }
 
-loop();
+function closeModal(){
+  document.getElementById("modal").classList.remove("show");
+}
+
+// авто вход
+if(getUser()){
+  loadApp();
+}
+
 </script>
 
 </body>
