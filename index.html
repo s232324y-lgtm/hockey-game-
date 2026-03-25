@@ -1,61 +1,62 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Аккаунт</title>
+  <meta charset="UTF-8">
+  <title>Аккаунт</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-<style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: #3b5998;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
+    .box {
+      background: rgba(255,255,255,0.1);
+      padding: 30px;
+      border-radius: 15px;
+      width: 300px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
 
-.box {
-  background: rgba(255,255,255,0.1);
-  padding: 30px;
-  border-radius: 12px;
-  width: 300px;
-  text-align: center;
-  color: white;
-}
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+    }
 
-input {
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border-radius: 6px;
-  border: none;
-}
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
 
-button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-}
+    .reg { background: #4CAF50; color: white; }
+    .login { background: #3f7cff; color: white; }
 
-.reg { background: #4CAF50; }
-.login { background: #4a6edb; }
-
-#status {
-  margin-top: 15px;
-  font-size: 14px;
-}
-</style>
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: white;
+      word-break: break-word;
+    }
+  </style>
 </head>
-
 <body>
 
 <div class="box">
-  <h2>Аккаунт</h2>
+  <h2 style="color:white;">Аккаунт</h2>
+
   <input id="email" type="email" placeholder="Email">
   <input id="pass" type="password" placeholder="Пароль">
 
@@ -65,59 +66,50 @@ button {
   <div id="status"></div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
-// 🔥 ТВОЯ КОНФИГУРАЦИЯ (я вставил с фото)
-const firebaseConfig = {
-  apiKey: "AIzaSyBwGSDeMO0yDtLiOPGNED7GiWRK9J8UWkg",
-  authDomain: "ded-shop-921c6.firebaseapp.com",
-  projectId: "ded-shop-921c6",
-  storageBucket: "ded-shop-921c6.appspot.com",
-  messagingSenderId: "168352739870",
-  appId: "1:168352739870:web:408cbe3cd7afa1df34740f",
-  measurementId: "G-FKRK4R6JJN"
-};
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBwGSDeM00yDtLiOPGNED7GiWRK9J8UWkg",
+    authDomain: "ded-shop-921c6.firebaseapp.com",
+    projectId: "ded-shop-921c6",
+    storageBucket: "ded-shop-921c6.appspot.com",
+    messagingSenderId: "168352739870",
+    appId: "1:168352739870:web:408cbe3cd7afa1df34740f"
+  };
 
-// запуск
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
 
-// статус
-function status(text) {
-  document.getElementById("status").innerText = text;
-}
-
-// регистрация
-window.register = async () => {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
-
-  try {
-    await createUserWithEmailAndPassword(auth, email, pass);
-    status("✅ Регистрация успешна");
-  } catch (e) {
-    status("❌ " + e.message);
+  function status(text) {
+    document.getElementById("status").innerText = text;
   }
-};
 
-// вход
-window.login = async () => {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
+  async function register() {
+    const email = document.getElementById("email").value;
+    const pass = document.getElementById("pass").value;
 
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-    status("✅ Вход выполнен");
-  } catch (e) {
-    status("❌ " + e.message);
+    try {
+      await auth.createUserWithEmailAndPassword(email, pass);
+      status("Регистрация успешна ✅");
+    } catch (e) {
+      status(e.message);
+    }
   }
-};
+
+  async function login() {
+    const email = document.getElementById("email").value;
+    const pass = document.getElementById("pass").value;
+
+    try {
+      await auth.signInWithEmailAndPassword(email, pass);
+      status("Вход выполнен ✅");
+    } catch (e) {
+      status(e.message);
+    }
+  }
 </script>
 
 </body>
