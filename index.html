@@ -2,268 +2,131 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ultra App</title>
+<title>Регистрация</title>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-
-body{
-  font-family:system-ui;
-  background:#0f2027;
-  color:#fff;
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: white;
 }
 
-/* layout */
-.app{display:flex;flex-direction:column;height:100vh;}
-
-.header{
-  padding:15px;
-  background:#111;
-  display:flex;
-  justify-content:space-between;
+.box {
+  background: rgba(255,255,255,0.1);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  width: 300px;
+  text-align: center;
 }
 
-.nav button{margin-left:5px;}
-
-.main{flex:1;overflow:auto;padding:15px;}
-
-.page{display:none;}
-.page.active{display:block;}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
-  gap:10px;
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 10px;
 }
 
-.card{
-  background:#1b2a34;
-  padding:15px;
-  border-radius:12px;
-  text-align:center;
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
 }
 
-button{
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#ff9800;
-  color:#fff;
-}
+.reg { background: #00c853; }
+.login { background: #2962ff; }
 
-input{
-  padding:10px;
-  margin:5px 0;
-  width:100%;
-  border:none;
-  border-radius:8px;
-}
-
-/* modal */
-.modal{
-  position:fixed;
-  inset:0;
-  display:none;
-  background:rgba(0,0,0,0.7);
-  align-items:center;
-  justify-content:center;
-}
-
-.modal.show{display:flex;}
-
-.box{
-  background:#222;
-  padding:20px;
-  border-radius:10px;
+#status {
+  margin-top: 15px;
 }
 </style>
-</head>
 
+</head>
 <body>
 
-<div class="app">
+<div class="box">
+  <h2>Аккаунт</h2>
 
-  <div class="header">
-    <div>🔥 ULTRA APP</div>
-    <div class="nav">
-      <button onclick="go('home')">Главная</button>
-      <button onclick="go('profile')">Профиль</button>
-      <button onclick="go('donate')">Донат</button>
-      <button onclick="logout()">Выйти</button>
-    </div>
-  </div>
+  <input id="email" placeholder="Почта">
+  <input id="pass" type="password" placeholder="Пароль">
 
-  <div class="main">
+  <button class="reg" onclick="register()">Регистрация</button>
+  <button class="login" onclick="login()">Войти</button>
 
-    <!-- LOGIN -->
-    <div id="auth" class="page active">
-      <h2>Регистрация / Вход</h2>
-
-      <div class="card">
-        <input id="login" placeholder="Логин">
-        <input id="pass" placeholder="Пароль" type="password">
-
-        <button onclick="register()">Регистрация</button>
-        <button onclick="login()">Вход</button>
-      </div>
-    </div>
-
-    <!-- HOME -->
-    <div id="home" class="page">
-      <h2>Главная</h2>
-      <div class="grid" id="news"></div>
-    </div>
-
-    <!-- PROFILE -->
-    <div id="profile" class="page">
-      <h2>Профиль</h2>
-      <div class="card" id="profileData"></div>
-    </div>
-
-    <!-- DONATE -->
-    <div id="donate" class="page">
-      <h2>Донат</h2>
-      <div class="grid" id="donateList"></div>
-    </div>
-
-  </div>
-
+  <div id="status"></div>
 </div>
 
-<!-- MODAL -->
-<div class="modal" id="modal">
-  <div class="box">
-    <h3 id="text"></h3>
-    <button onclick="closeModal()">Ок</button>
-  </div>
-</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-<script>
-
-// ===== ДАННЫЕ =====
-const app = {
-  news:["🔥 Обновление","⚡ Новое","🎮 Режим","💻 Онлайн"],
-  prices:[100,200,250,500,550]
+// ⚠️ ВСТАВЬ СЮДА СВОЙ firebaseConfig
+const firebaseConfig = {
+  apiKey: "ТВОЙ_API_KEY",
+  authDomain: "ТВОЙ_PROJECT.firebaseapp.com",
+  projectId: "ТВОЙ_PROJECT",
+  appId: "ТВОЙ_APP_ID"
 };
 
-// ===== НАВИГАЦИЯ =====
-function go(id){
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-// ===== СОХРАНЕНИЕ =====
-function saveUser(user){
-  localStorage.setItem("user", JSON.stringify(user));
-}
-
-function getUser(){
-  return JSON.parse(localStorage.getItem("user"));
-}
-
-// ===== РЕГИСТРАЦИЯ =====
-function register(){
-  const login = document.getElementById("login").value;
+// регистрация
+window.register = async () => {
+  const email = document.getElementById("email").value;
   const pass = document.getElementById("pass").value;
 
-  if(!login || !pass) return show("Заполни всё");
-
-  const user = {
-    login,
-    pass,
-    level:1,
-    coins:0
-  };
-
-  saveUser(user);
-  show("Аккаунт создан");
-}
-
-// ===== ВХОД =====
-function login(){
-  const login = document.getElementById("login").value;
-  const pass = document.getElementById("pass").value;
-
-  const user = getUser();
-
-  if(!user) return show("Нет аккаунта");
-
-  if(user.login === login && user.pass === pass){
-    show("Вход успешен");
-    loadApp();
-  } else {
-    show("Ошибка");
+  if (!email || !pass) {
+    status("Введите данные");
+    return;
   }
+
+  try {
+    await createUserWithEmailAndPassword(auth, email, pass);
+    status("Аккаунт создан ✅");
+  } catch (e) {
+    status(e.message);
+  }
+};
+
+// вход
+window.login = async () => {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    status("Вход выполнен ✅");
+  } catch (e) {
+    status("Ошибка входа ❌");
+  }
+};
+
+// проверка авторизации
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    status("Ты уже вошёл: " + user.email);
+  }
+});
+
+function status(text){
+  document.getElementById("status").innerText = text;
 }
-
-// ===== ВЫХОД =====
-function logout(){
-  localStorage.removeItem("user");
-  go("auth");
-}
-
-// ===== ЗАГРУЗКА =====
-function loadApp(){
-  go("home");
-  render();
-}
-
-// ===== РЕНДЕР =====
-function render(){
-
-  // новости
-  const news = document.getElementById("news");
-  news.innerHTML="";
-  app.news.forEach(n=>{
-    news.innerHTML += `<div class="card">${n}</div>`;
-  });
-
-  // профиль
-  const user = getUser();
-  document.getElementById("profileData").innerHTML = `
-    <p>Имя: ${user.login}</p>
-    <p>Уровень: ${user.level}</p>
-    <p>Монеты: ${user.coins}</p>
-  `;
-
-  // донат
-  const donate = document.getElementById("donateList");
-  donate.innerHTML="";
-  app.prices.forEach(p=>{
-    donate.innerHTML += `
-      <div class="card">
-        <div>${p}₽</div>
-        <button onclick="pay(${p})">Купить</button>
-      </div>
-    `;
-  });
-}
-
-// ===== ДОНАТ (фейк) =====
-function pay(amount){
-  let user = getUser();
-  user.coins += amount;
-  saveUser(user);
-  render();
-  show("Начислено: "+amount);
-}
-
-// ===== МОДАЛКА =====
-function show(t){
-  document.getElementById("text").innerText=t;
-  document.getElementById("modal").classList.add("show");
-}
-
-function closeModal(){
-  document.getElementById("modal").classList.remove("show");
-}
-
-// авто вход
-if(getUser()){
-  loadApp();
-}
-
 </script>
 
 <script type="module"> // Import the functions you need from the SDKs you need import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js"; import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js"; // TODO: Add SDKs for Firebase products that you want to use // https://firebase.google.com/docs/web/setup#available-libraries // Your web app's Firebase configuration // For Firebase JS SDK v7.20.0 and later, measurementId is optional const firebaseConfig = { apiKey: "AIzaSyBwGSDeMOOyDtLiOPGNED7GiWRK9J8UWkg", authDomain: "ded-shop-921c6.firebaseapp.com", projectId: "ded-shop-921c6", storageBucket: "ded-shop-921c6.firebasestorage.app", messagingSenderId: "168352739870", appId: "1:168352739870:web:408cbe3cd7afa1df34740f", measurementId: "G-FKRK4R6JJN" }; // Initialize Firebase const app = initializeApp(firebaseConfig); const analytics = getAnalytics(app); </script> (<script type="module"> // Импортируйте необходимые функции из SDK import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js"; import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js"; // TODO: Добавьте SDK для продуктов Firebase, которые вы хотите использовать // https://firebase.google.com/docs/web/setup#available-libraries // Конфигурация Firebase вашего веб-приложения // Для Firebase JS SDK версии 7.20.0 и выше measurementId является необязательным const firebaseConfig = { apiKey: "AIzaSyBwGSDeMOOyDtLiOPGNED7GiWRK9J8UWkg", authDomain: "ded-shop-921c6.firebaseapp.com", projectId: "ded-shop-921c6", storageBucket: "ded-shop-921c6.firebasestorage.app", messagingSenderId: "168352739870", appId: "1:168352739870:web:408cbe3cd7afa1df34740f", measurementId: "G-FKRK4R6JJN" }; // Инициализация Firebase const app = initializeApp(firebaseConfig); const analytics = getAnalytics(app); </script>)</body>
